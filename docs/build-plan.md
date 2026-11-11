@@ -95,13 +95,13 @@ All in `content/scripts/tutorial/`:
 6. Discord login.
 7. Deploy.
 
-## Open questions
+## Questions, answered
 
-1. Webclient or Java client? (recommend webclient)
-2. AFK-with-tab-open, or XP while logged out?
-3. What are the "upgrades"? Tool tiers, an upgrade shop, prestige? This is the missing half of the pitch.
-4. Do you want idle-time caps / soft anti-bot rules, or is "leave it running" the whole point?
-5. Is the fence a real 300-total-level gate at launch or genuinely text-only?
+1. **Webclient or Java client?** Webclient (`Client-TS`).
+2. **AFK with tab open, or XP while logged out?** Nothing progresses while logged out. The tab has to stay open; the *server* does the work, the client only holds the socket.
+3. **What are the "upgrades"?** Better axes bought from the starting-hall shop. No prestige, no upgrade tree.
+4. **Idle caps / anti-bot?** None. No AFK logout, no random events, trees never deplete.
+5. **Fence?** A real check: `~total_level < 300` (`tut_doors_and_gates.rs2`). The message shows your current total level.
 
 ## Rough totals
 
@@ -115,3 +115,48 @@ All in `content/scripts/tutorial/`:
 | 5 deploy | 1–2 days |
 
 ≈ 7–10 focused days to something a stranger can log into, chop forever, feed a fire, and see their name on a leaderboard. The parts that actually decide whether Idlescape works are #2 and the missing upgrade loop — spend the time there, not on OAuth.
+
+## What phases 1–3 actually are
+
+`docs/running.md` has the setup and the manual test list. This is where the code ended up.
+
+**Spawn (phase 1)**
+
+| Change | File |
+|---|---|
+| First login forces `%tutorial = ^tutorial_complete`, teleports to `0_48_48_22_34`, hands over a bronze axe | `content/scripts/login_logout/login.rs2` |
+| The guide is now "Idle Guide", has `op3=Trade`, and explains the loop | `tutorial/configs/tutorial.npc`, `tutorial/scripts/guides/runescape_guide.rs2` |
+| The tutorial tree triggers are gone; `newbietree`/`newbietree2`/`newbieoaktree` are `category=tree` | `tutorial/configs/tutorial.loc`, `tutorial/scripts/skills/tut_woodcut.rs2` |
+| Bank booth (2213) at local `0 20 33` in the starting hall | `content/maps/m48_48.jm2` |
+| The survival guide no longer hands out free items (that was an infinite-money loop once the shop buys at face value) | `tutorial/scripts/guides/survival_guide.rs2` |
+
+**Idle loop (phase 2)**
+
+- Trees never deplete: the `loc_change(stump)` branch is deleted from `get_logs`. Depletion had to go for *all* trees, not just the normal ones, otherwise an idle chopper stalls every eight oak logs.
+- Logs are `stackable=yes` and the inventory guards use `inv_itemspace`, so a full pack of 28 stacks keeps filling.
+- No random events: the periodic `settimer(general_macro_events, ...)` is gone and `World.ts` no longer rolls `afkEventReady`, so no skill ever sees `afk_event`. `IdleTimerHandler` ignores the client's idle report.
+- Fire feeding lives in `cooking.rs2`'s `[oplocu,_cooking_fire]` (which calls `~feed_fire` in `firemaking.rs2`) rather than a dedicated `[oplocu,fire]` trigger: the engine resolves an exact-loc trigger *before* a category one, so a new trigger would have shadowed cooking.
+- Ashes use a watcher loop (`loc_find` until the fire is gone) instead of a one-shot `world_delay`, because a fed fire outlives its original timer.
+- The tutorial fishing spot is a real `saltfish` net spot now, and cooking no longer diverts to the dead tutorial lesson when you are on the island.
+- Sell X / Buy X were added both in the interface configs (`option5`) and in `shop.rs2` via `p_countdialog`/`last_int`.
+
+**Shop economy**
+
+One shop (`idlescape_shop`, `content/scripts/idlescape/`), owned by the Idle Guide, `openshop(idlescape_shop, 1000, 1000, 0, ...)`: face value both ways, no haggling, `allstock`, so logs and fish can be dumped there.
+
+| Item | Price | Notes |
+|---|---|---|
+| Logs | 1gp each | `oc_cost=1` sells at 100% |
+| Small fishing net | 5gp | vanilla cost |
+| Iron axe | 56gp | first upgrade, ~20 minutes of chopping |
+| Steel → rune axe | 200 / 384 / 520 / 1280 / 12800 | vanilla ladder, `oc_cost` at face value |
+
+Because shop prices are still `oc_cost × multiplier`, those costs leak into every other shop and into alchemy. Fine with one shop; a second shop needs per-shop prices. This is the known debt from question 3.
+
+**Login (phase 3)**
+
+- `engine/src/server/login/DiscordAuth.ts`: `/auth/discord` (302 + state cookie), `/auth/discord/callback` (code exchange, `account` row keyed on `discord_id`, session cookie), `/auth/session` (mints a single-use game token), `/auth/logout`.
+- `LoginServer.ts` accepts that token in the password field, checks it against `account_session`, and nulls it on use.
+- `website.registration` is `true` on purpose: that is the flag that stops the login server from auto-creating username/password accounts.
+- The web client has one button, auto-logs in when a session cookie already exists, and renders login progress/errors under it.
+- Discord credentials live in `world.json`; the checked-in default is `enabled: false`.
