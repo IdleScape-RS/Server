@@ -8,6 +8,8 @@ cd engine && bun run src/app.ts
 
 Requires [bun](https://bun.sh). The first boot packs `../content` into `data/pack` and takes ~15s; later boots are ~5s.
 
+If you restart while the previous instance is still shutting down, the login worker can die with `Failed to start server. Is port 43500 in use?` and the world carries on serving — every login then answers "Unable to connect" (`login server reply -1` in the log). Check for `Login server listening on port 43500` and all six ports (8888, 8898, 43594, 43500, 45099, 43501) before handing the server to anyone.
+
 Ports: `8888` web, `8898` management, `43594` game, `43500` login, `45099` friend, `43501` logger.
 
 ## 2. Discord login setup
