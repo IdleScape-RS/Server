@@ -65,7 +65,19 @@ No client rebuild, no constants to paste. The three checks the world makes on a 
 
 There is also a fixed engine bug in `src/io/Packet.ts` worth knowing about: node-forge's jsbn reads a byte array as **two's complement**, so `new BigInteger(bytes)` produced a *negative* number whenever the top bit was set. Roughly half of all ciphertexts are like that, so `rsadec` decrypted half of all logins to garbage and the world answered "RuneScape has been updated!". Both `rsaenc` and `rsadec` now prepend a zero byte to force an unsigned read.
 
-## 4. Manual test checklist
+## 4. Dev commands and staff
+
+Cheats are gated on `staffmodlevel`, and that value now comes from the account rather than from "this build is not production":
+
+- `node.staff` in world.json (or `NODE_STAFF`) is a comma-separated list of usernames that get `staffmodlevel` 4 automatically on login. It is written to the account row so every other staff check (hiscores, chat crowns) agrees.
+- Everyone else gets 0: no `::give`, no `~debugproc`, nothing. This used to be wrong — the login thread forced `staffmodlevel = 4` for **every** login on a non-production world, which made every player an admin.
+- In game: `~help` lists the content debugprocs; `::ids` and `::id <name>` print nearby entity ids and look up a name's id; `::speed`, `::fly`, `::rebuild`, `::tele`, `::give` are engine commands. Note the two prefixes are different things: `::x` is a cheat command, `~x` runs the `[debugproc,x]` script. If one does nothing, try the other.
+- `node.debug` (world.json) only affects server log verbosity and whether *staff* see `No trigger for [x,y]` hints. Players never see those any more.
+- `production: true` is the fully-live switch: login rate limits on, live content reload off, and the developer command block disabled even for staff. Use it on the public host, not while building content.
+
+To see ids, stand next to something and type `::ids`.
+
+## 5. Manual test checklist
 
 - Login with Discord lands you in the starting hall (not Lumbridge) holding a bronze axe.
 - Opening /rs2.cgi while signed out sends you to Discord; with a session it loads the game.
@@ -80,7 +92,7 @@ There is also a fixed engine bug in `src/io/Packet.ts` worth knowing about: node
 - Leave the game alone for 5+ minutes: no logout, no random event, chopping continues.
 - Reload the page: you are logged back in where you left off.
 
-## 5. Hosting on labs.lostcity.rs
+## 6. Hosting on labs.lostcity.rs
 
 The callback path does not change, only the origin. Add a second Redirects entry to the **same** Discord app and keep the localhost one, so local development still works:
 
@@ -109,7 +121,7 @@ What already works once you switch to HTTPS:
 
 One thing the code does not protect you from: the management port (`8898`) serves `/setup/config`, which dumps the whole world config — including `discord.clientSecret` if it is in world.json. Bind that port to localhost or firewall it. Using the env vars above keeps the secret out of that response entirely.
 
-## 6. Rebuilding
+## 7. Rebuilding
 
 ```sh
 cd engine && bun run build          # re-pack ../content into engine/data/pack
