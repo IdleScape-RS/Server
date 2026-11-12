@@ -1,5 +1,17 @@
 # Running Idlescape
 
+## 0. Which revision
+
+Idlescape runs on upstream revision **289** (17 Jan 2005, the newest revision that still ships a web client — Engine-TS, Content and Client-TS all have that branch, and upstream marks it work-in-progress). The three checkouts are on a local `289` branch:
+
+```sh
+git -C content branch --show-current   # 289
+git -C engine branch --show-current
+git -C webclient branch --show-current
+```
+
+Revision 377 has no Client-TS branch, so it would mean giving up the web client. Each branch of Engine-TS/Content/Client-TS is a snapshot of one historical revision, so the three must be moved together.
+
 ## 1. Start the server
 
 ```sh
