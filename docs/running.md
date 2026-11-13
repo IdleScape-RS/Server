@@ -91,6 +91,10 @@ Cheats are gated on `staffmodlevel`, and that value now comes from the account r
 
 To see ids, stand next to something and type `::ids`.
 
+### After changing content, reload the browser
+
+The web client caches the map and every config in the browser, and it only revalidates them against `/crc` at **page load** — a re-login is not enough. So a loc, shop or object change is invisible until you reload, and worse, the client keeps rendering the *old* map file (the client map carries locs as well as terrain, so an old copy still draws an old chest, with its old op label). If something looks stale after a content change, hard reload first.
+
 ## 5. Manual test checklist
 
 - Login with Discord lands you in the starting hall (not Lumbridge) holding a bronze axe.
